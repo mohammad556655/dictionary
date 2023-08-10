@@ -11,7 +11,7 @@ from gtts import gTTS
 from gtts import lang as gttslang
 import io
 from langdetect import detect
-
+import os
 import threading
 from textblob import TextBlob
 
@@ -221,9 +221,10 @@ def reply(update, context):
                     result = whisper.decode(model, mel, options)
 
                     # print the recognized text
-                    update.message.reply_text(f'زبان فایل: \n {str(audio_laguages)}')
+                    update.message.reply_text(f'زبان فایل: \n {str(next(iter(audio_laguages)))}')
                     update.message.reply_text(f'متن اصلی فایل: \n {result.text}')
                     update.message.reply_text(f'ترجمه متن فایل: \n {lang_translator(result.text)}')
+                    os.remove(main_path)
 
                     # Handling voice messages
                     # Handling voice messages
@@ -259,10 +260,10 @@ def reply(update, context):
                     result = whisper.decode(model, mel, options)
 
                     # print the recognized text
-                    update.message.reply_text(f'زبان فایل: \n {str(voice_laguages)}')
+                    update.message.reply_text(f'زبان فایل: \n {str(next(iter(voice_laguages)))}')
                     update.message.reply_text(f'متن اصلی فایل: \n {result.text}')
                     update.message.reply_text(f'ترجمه متن فایل: \n {lang_translator(result.text)}')
-
+                    os.remove(main_path)
 
                     # Handling voice messages
                     # Handling voice messages
@@ -280,7 +281,10 @@ def reply(update, context):
                     #     audio_text = recognizer.recognize_google(audio_data)
                     #     print(audio_text)
                     #     update.message.reply_text(lang_translator(user_input=audio_text, lang=lang))
-
+                elif update.message.document:
+                    # Handling video messages
+                    # Extract text from video if necessary
+                    update.message.reply_text("Video received. Text extraction is not implemented yet")
                 elif update.message.video:
                     # Handling video messages
                     # Extract text from video if necessary
@@ -321,8 +325,15 @@ def ask_change_mode(update: Update , context: CallbackContext) -> None:
     if "mode" not in context.user_data:
         context.user_data["mode"] = {}
         context.user_data["mode"][user_id] = "translate"
-    update.message.reply_text(f'حالت پیشفرض شما {context.user_data["mode"][user_id]} میباشد')
-    update.message.reply_text("برای تغییر حالت پیشفرض /yes را کلیک کنید ")
+
+    if context.user_data["mode"][user_id] == "translate":
+    
+        update.message.reply_text(f'حالت پیشفرض شما ترجمه میباشد')
+        update.message.reply_text("برای تغییر حالت پیشفرض /yes را کلیک کنید ")
+    elif context.user_data["mode"][user_id] == "pronounciation" :
+        update.message.reply_text(f'حالت پیشفرض شما تلفظ میباشد')
+        update.message.reply_text("برای تغییر حالت پیشفرض /yes را کلیک کنید ")
+
     return ASK_TO_CHANGE_MODE
 
 def change_mode(update: Update , context: CallbackContext) -> None:
@@ -336,8 +347,10 @@ def change_mode(update: Update , context: CallbackContext) -> None:
         context.user_data["mode"][user_id] = "translate"
 
 
-
-    update.message.reply_text(f'حالت پیشفرض شما یه{context.user_data["mode"][user_id]} تغییر یافت')
+    if context.user_data["mode"][user_id] == "translate":
+        update.message.reply_text(f'حالت پیشفرض شما به ترجمه تغییر یافت')
+    elif context.user_data["mode"][user_id] == "pronounciation" :
+        update.message.reply_text(f'حالت پیشفرض شما به تلفظ تغییر یافت')
     return ConversationHandler.END
 
 def main():
@@ -368,7 +381,7 @@ def main():
         },
     )
     dp.add_handler(change_mode_conv)
-    dp.add_handler(MessageHandler(Filters.audio | Filters.voice | Filters.text, reply,run_async=True))
+    dp.add_handler(MessageHandler(Filters.audio | Filters.voice | Filters.text | Filters.document, reply,run_async=True))
     updater.start_polling()
     updater.idle()
 
